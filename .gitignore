@@ -1,0 +1,9 @@
+# API keys — never commit this
+Config.xcconfig
+
+# Xcode build artifacts
+build/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+DerivedData/
+.DS_Store
