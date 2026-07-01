@@ -143,10 +143,7 @@ struct NewsTickerRow: View {
             }
             .clipped()
         }
-        // Pause scrolling when hovering so user can click
-        .onHover { hovering in
-            isPaused = hovering
-        }
+        .onHover { hovering in isPaused = hovering }
     }
 
     private var newsStrip: some View {
@@ -172,10 +169,12 @@ struct NewsTickerRow: View {
         guard !items.isEmpty else { return }
         stopScrolling()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            stopScrolling()  // cancel any timer a prior asyncAfter already created
+            guard !items.isEmpty else { return }
             let interval = 1.0 / 60.0
             let step = scrollSpeed * interval
             timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-                guard !isPaused else { return }   // freeze while hovering
+                guard !isPaused else { return }
                 offset -= step
                 if stripWidth > 0 && abs(offset) >= stripWidth {
                     offset = 0

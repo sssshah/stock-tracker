@@ -165,7 +165,8 @@ struct ScrollingContent: View {
         .fixedSize()
         .background(
             GeometryReader { g in
-                Color.clear.onAppear { stripWidth = g.size.width }
+                Color.clear
+                    .onAppear { stripWidth = g.size.width }
                     .onChange(of: g.size.width) { _, w in stripWidth = w }
             }
         )
@@ -175,6 +176,8 @@ struct ScrollingContent: View {
         guard quotes.count > 0 else { return }
         stopScrolling()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            stopScrolling()  // cancel any timer a prior asyncAfter already created
+            guard quotes.count > 0 else { return }
             let interval = 1.0 / 60.0
             let step = scrollSpeed * interval
             timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
