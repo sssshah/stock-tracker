@@ -75,7 +75,8 @@ struct ContentView: View {
                             isMarketOpen: viewModel.isMarketOpen,
                             sessionLabel: viewModel.sessionLabel,
                             statusMessage: viewModel.statusMessage,
-                            onSymbolHover: { sym in hoveredSymbol = sym }
+                            onSymbolHover: { sym in hoveredSymbol = sym },
+                            isPaused: hoveredSymbol != nil
                         )
                     }
                 }
