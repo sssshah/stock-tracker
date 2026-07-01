@@ -4,6 +4,17 @@ struct ContentView: View {
     @ObservedObject var viewModel: TickerViewModel
     @State private var isHovered = false
     @State private var isMaximized = false
+    @State private var hoveredSymbol: String? = nil
+
+    private var displayedNews: [NewsItem] {
+        guard let sym = hoveredSymbol else { return viewModel.newsItems }
+        let filtered = viewModel.newsItems.filter {
+            $0.related.split(separator: ",")
+                .map { String($0).trimmingCharacters(in: .whitespaces) }
+                .contains(sym)
+        }
+        return filtered.isEmpty ? viewModel.newsItems : filtered
+    }
 
     var body: some View {
         ZStack {
@@ -63,7 +74,9 @@ struct ContentView: View {
                             quotes: viewModel.isLoading ? placeholderQuotes : viewModel.formattedQuotes(),
                             isMarketOpen: viewModel.isMarketOpen,
                             sessionLabel: viewModel.sessionLabel,
-                            statusMessage: viewModel.statusMessage
+                            statusMessage: viewModel.statusMessage,
+                            onSymbolHover: { sym in hoveredSymbol = sym },
+                            isPaused: hoveredSymbol != nil
                         )
                     }
                 }
@@ -88,7 +101,7 @@ struct ContentView: View {
                     if viewModel.newsItems.isEmpty {
                         loadingNewsView
                     } else {
-                        NewsTickerRow(items: viewModel.newsItems)
+                        NewsTickerRow(items: displayedNews, filterLabel: hoveredSymbol)
                     }
                 }
                 .frame(height: 28)

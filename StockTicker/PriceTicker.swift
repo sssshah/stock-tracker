@@ -4,6 +4,7 @@ import SwiftUI
 
 struct QuoteChip: View {
     let quote: StockQuote
+    var onSymbolHover: ((String?) -> Void)? = nil
 
     private var changeColor: Color {
         quote.isPositive
@@ -41,6 +42,9 @@ struct QuoteChip: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
+        .onHover { hovering in
+            onSymbolHover?(hovering ? quote.symbol : nil)
+        }
     }
 }
 
@@ -62,6 +66,8 @@ struct PriceTickerRow: View {
     let isMarketOpen: Bool
     let sessionLabel: String
     let statusMessage: String
+    var onSymbolHover: ((String?) -> Void)? = nil
+    var isPaused: Bool = false
 
     @State private var isAnimating = false
 
@@ -71,7 +77,7 @@ struct PriceTickerRow: View {
     var body: some View {
         ZStack(alignment: .leading) {
             // Scrolling strip — inset by badge width + a small gap
-            ScrollingContent(quotes: quotes)
+            ScrollingContent(quotes: quotes, onSymbolHover: onSymbolHover, isPaused: isPaused)
                 .padding(.leading, badgeWidth + 4)
                 .clipped()
 
@@ -121,12 +127,20 @@ struct PriceTickerRow: View {
 
 // MARK: - Scrolling Content
 
+private struct PriceStripWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
 struct ScrollingContent: View {
     let quotes: [StockQuote]
+    var onSymbolHover: ((String?) -> Void)? = nil
+    var isPaused: Bool = false
 
     @State private var offset: CGFloat = 0
     @State private var stripWidth: CGFloat = 0
     @State private var timer: Timer? = nil
+    @State private var paused: Bool = false
 
     private let scrollSpeed: CGFloat = 60
 
@@ -138,12 +152,17 @@ struct ScrollingContent: View {
             }
             .offset(x: offset)
             .onAppear { startScrolling() }
+            .onDisappear { stopScrolling() }
             .onChange(of: quotes.count) { _, _ in
                 stopScrolling()
                 offset = 0
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     startScrolling()
                 }
+            }
+            .onChange(of: isPaused) { _, p in paused = p }
+            .onPreferenceChange(PriceStripWidthKey.self) { w in
+                if w > 0 { stripWidth = w }
             }
         }
         .clipped()
@@ -152,15 +171,16 @@ struct ScrollingContent: View {
     private var stripContent: some View {
         HStack(spacing: 0) {
             ForEach(quotes) { quote in
-                QuoteChip(quote: quote)
+                QuoteChip(quote: quote, onSymbolHover: onSymbolHover)
                 SeparatorDot()
             }
         }
         .fixedSize()
         .background(
             GeometryReader { g in
-                Color.clear.onAppear { stripWidth = g.size.width }
-                    .onChange(of: g.size.width) { _, w in stripWidth = w }
+                Color.clear
+                    .onAppear { stripWidth = g.size.width }
+                    .preference(key: PriceStripWidthKey.self, value: g.size.width)
             }
         )
     }
@@ -169,9 +189,12 @@ struct ScrollingContent: View {
         guard quotes.count > 0 else { return }
         stopScrolling()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            stopScrolling()  // cancel any timer a prior asyncAfter already created
+            guard quotes.count > 0 else { return }
             let interval = 1.0 / 60.0
             let step = scrollSpeed * interval
             timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
+                guard !paused else { return }
                 offset -= step
                 if stripWidth > 0 && abs(offset) >= stripWidth {
                     offset = 0

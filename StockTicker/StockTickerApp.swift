@@ -24,6 +24,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var editorPanel: FloatingPanel?
     var aboutPanel: NSPanel?
     var newsPanel: NSPanel?
+    var newsWebView: WKWebView?   // strong ref so WKNavigationDelegate isn't released
+    var newsFallbackURL: URL?
     var coordinator: WindowCoordinator?
     var viewModel: TickerViewModel?
 
@@ -180,6 +182,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.hidesOnDeactivate = false
 
         let webView = WKWebView()
+        webView.navigationDelegate = self
+        newsFallbackURL = url
+        newsWebView = webView
         webView.load(URLRequest(url: url))
         panel.contentView = webView
 
@@ -363,5 +368,30 @@ class FloatingPanel: NSPanel {
 // so tap gestures fire on the first click instead of the second.
 class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
+// MARK: - WKNavigationDelegate
+// Falls back to the default browser if the in-app WKWebView can't load the page
+// (e.g. ATS blocks an HTTP URL, or the server is unreachable).
+
+extension AppDelegate: WKNavigationDelegate {
+    func webView(_ webView: WKWebView,
+                 didFailProvisionalNavigation navigation: WKNavigation!,
+                 withError error: Error) {
+        openInBrowser()
+    }
+
+    func webView(_ webView: WKWebView,
+                 didFail navigation: WKNavigation!,
+                 withError error: Error) {
+        openInBrowser()
+    }
+
+    private func openInBrowser() {
+        guard let url = newsFallbackURL else { return }
+        newsPanel?.close()
+        newsPanel = nil
+        NSWorkspace.shared.open(url)
+    }
 }
 

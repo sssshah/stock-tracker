@@ -99,8 +99,14 @@ extension View {
 
 // MARK: - Scrolling News Row
 
+private struct NewsStripWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
 struct NewsTickerRow: View {
     let items: [NewsItem]
+    var filterLabel: String? = nil
 
     @State private var offset: CGFloat = 0
     @State private var stripWidth: CGFloat = 0
@@ -111,15 +117,20 @@ struct NewsTickerRow: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            // Pinned "NEWS" badge
-            Text("NEWS")
+            // Pinned badge — "NEWS" normally, symbol name when filtered
+            let badgeLabel = filterLabel ?? "NEWS"
+            let badgeColor = filterLabel != nil
+                ? Color(red: 1.0, green: 0.75, blue: 0.3)
+                : Color(red: 0.4, green: 0.75, blue: 1.0)
+            Text(badgeLabel)
                 .font(.system(size: 9, weight: .bold, design: .monospaced))
-                .foregroundColor(Color(red: 0.4, green: 0.75, blue: 1.0))
+                .foregroundColor(badgeColor)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
-                .background(Color(red: 0.4, green: 0.75, blue: 1.0).opacity(0.15))
+                .background(badgeColor.opacity(0.15))
                 .cornerRadius(3)
                 .padding(.leading, 12)
+                .animation(.easeInOut(duration: 0.15), value: filterLabel)
 
             GeometryReader { _ in
                 HStack(spacing: 0) {
@@ -128,16 +139,20 @@ struct NewsTickerRow: View {
                 }
                 .offset(x: offset)
                 .onAppear { startScrolling() }
+                .onDisappear { stopScrolling() }
                 .onChange(of: items.count) { _, _ in
                     stopScrolling(); offset = 0; startScrolling()
+                }
+                .onChange(of: filterLabel) { _, _ in
+                    stopScrolling(); offset = 0; startScrolling()
+                }
+                .onPreferenceChange(NewsStripWidthKey.self) { w in
+                    if w > 0 { stripWidth = w }
                 }
             }
             .clipped()
         }
-        // Pause scrolling when hovering so user can click
-        .onHover { hovering in
-            isPaused = hovering
-        }
+        .onHover { hovering in isPaused = hovering }
     }
 
     private var newsStrip: some View {
@@ -154,7 +169,7 @@ struct NewsTickerRow: View {
             GeometryReader { g in
                 Color.clear
                     .onAppear { stripWidth = g.size.width }
-                    .onChange(of: g.size.width) { _, w in stripWidth = w }
+                    .preference(key: NewsStripWidthKey.self, value: g.size.width)
             }
         )
     }
@@ -163,10 +178,12 @@ struct NewsTickerRow: View {
         guard !items.isEmpty else { return }
         stopScrolling()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            stopScrolling()  // cancel any timer a prior asyncAfter already created
+            guard !items.isEmpty else { return }
             let interval = 1.0 / 60.0
             let step = scrollSpeed * interval
             timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-                guard !isPaused else { return }   // freeze while hovering
+                guard !isPaused else { return }
                 offset -= step
                 if stripWidth > 0 && abs(offset) >= stripWidth {
                     offset = 0
