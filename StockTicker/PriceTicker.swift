@@ -152,6 +152,7 @@ struct ScrollingContent: View {
             }
             .offset(x: offset)
             .onAppear { startScrolling() }
+            .onDisappear { stopScrolling() }
             .onChange(of: quotes.count) { _, _ in
                 stopScrolling()
                 offset = 0

@@ -62,7 +62,9 @@ class FinnhubService {
                 let quote = try await fetchQuote(symbol: symbol)
                 results[symbol] = quote
             } catch {
+                #if DEBUG
                 print("Quote fetch failed for \(symbol): \(error)")
+                #endif
             }
             try? await Task.sleep(nanoseconds: 150_000_000)
         }
@@ -109,7 +111,9 @@ class FinnhubService {
             do {
                 let (data, response) = try await session.data(from: url)
                 if let http = response as? HTTPURLResponse {
+                    #if DEBUG
                     print("News HTTP \(http.statusCode) for \(symbol)")
+                    #endif
                     guard http.statusCode == 200 else { continue }
                 }
 
@@ -122,7 +126,9 @@ class FinnhubService {
                         .map { $0.trimmingCharacters(in: .whitespaces) }
                         .contains(symbol.uppercased())
                 }
+                #if DEBUG
                 print("News: \(items.count) raw → \(relevant.count) tagged for \(symbol)")
+                #endif
 
                 // Score all, sort best first.
                 // Strip semicolons BEFORE scoring so bullet #2+ can't inflate the wrong symbol.
@@ -161,7 +167,9 @@ class FinnhubService {
 
                         if shouldReplace {
                             bestByHeadline[headlineKey] = (item, sym, score)
+                            #if DEBUG
                             print("News: reassigned '\(item.headline.prefix(60))' from \(existing.1) → \(sym)")
+                            #endif
                         }
                     } else {
                         bestByHeadline[headlineKey] = (item, sym, score)
@@ -170,7 +178,9 @@ class FinnhubService {
                 }
 
             } catch {
+                #if DEBUG
                 print("News fetch failed for \(symbol): \(error)")
+                #endif
             }
             try? await Task.sleep(nanoseconds: 200_000_000)
         }
@@ -200,7 +210,9 @@ class FinnhubService {
             return true
         }
 
+        #if DEBUG
         print("News loaded: \(capped.count) items (display-capped at 3/symbol)")
+        #endif
         return capped
     }
 

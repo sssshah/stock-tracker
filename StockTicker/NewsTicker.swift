@@ -139,6 +139,7 @@ struct NewsTickerRow: View {
                 }
                 .offset(x: offset)
                 .onAppear { startScrolling() }
+                .onDisappear { stopScrolling() }
                 .onChange(of: items.count) { _, _ in
                     stopScrolling(); offset = 0; startScrolling()
                 }

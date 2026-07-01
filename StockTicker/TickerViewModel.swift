@@ -98,9 +98,13 @@ class TickerViewModel: ObservableObject {
             if let news = try? await FinnhubService.shared.fetchNews(symbols: symbols) {
                 newsItems = news
                 lastNewsFetch = Date()
+                #if DEBUG
                 print("News loaded: \(news.count) items")
+                #endif
             } else {
+                #if DEBUG
                 print("News fetch returned nil")
+                #endif
             }
         }
 
