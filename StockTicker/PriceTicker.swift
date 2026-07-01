@@ -67,6 +67,7 @@ struct PriceTickerRow: View {
     let sessionLabel: String
     let statusMessage: String
     var onSymbolHover: ((String?) -> Void)? = nil
+    var isPaused: Bool = false
 
     @State private var isAnimating = false
 
@@ -76,7 +77,7 @@ struct PriceTickerRow: View {
     var body: some View {
         ZStack(alignment: .leading) {
             // Scrolling strip — inset by badge width + a small gap
-            ScrollingContent(quotes: quotes, onSymbolHover: onSymbolHover)
+            ScrollingContent(quotes: quotes, onSymbolHover: onSymbolHover, isPaused: isPaused)
                 .padding(.leading, badgeWidth + 4)
                 .clipped()
 
@@ -126,13 +127,20 @@ struct PriceTickerRow: View {
 
 // MARK: - Scrolling Content
 
+private struct PriceStripWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
 struct ScrollingContent: View {
     let quotes: [StockQuote]
     var onSymbolHover: ((String?) -> Void)? = nil
+    var isPaused: Bool = false
 
     @State private var offset: CGFloat = 0
     @State private var stripWidth: CGFloat = 0
     @State private var timer: Timer? = nil
+    @State private var paused: Bool = false
 
     private let scrollSpeed: CGFloat = 60
 
@@ -151,6 +159,10 @@ struct ScrollingContent: View {
                     startScrolling()
                 }
             }
+            .onChange(of: isPaused) { _, p in paused = p }
+            .onPreferenceChange(PriceStripWidthKey.self) { w in
+                if w > 0 { stripWidth = w }
+            }
         }
         .clipped()
     }
@@ -167,7 +179,7 @@ struct ScrollingContent: View {
             GeometryReader { g in
                 Color.clear
                     .onAppear { stripWidth = g.size.width }
-                    .onChange(of: g.size.width) { _, w in stripWidth = w }
+                    .preference(key: PriceStripWidthKey.self, value: g.size.width)
             }
         )
     }
@@ -181,6 +193,7 @@ struct ScrollingContent: View {
             let interval = 1.0 / 60.0
             let step = scrollSpeed * interval
             timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
+                guard !paused else { return }
                 offset -= step
                 if stripWidth > 0 && abs(offset) >= stripWidth {
                     offset = 0

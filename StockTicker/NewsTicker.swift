@@ -99,6 +99,11 @@ extension View {
 
 // MARK: - Scrolling News Row
 
+private struct NewsStripWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
 struct NewsTickerRow: View {
     let items: [NewsItem]
     var filterLabel: String? = nil
@@ -140,6 +145,9 @@ struct NewsTickerRow: View {
                 .onChange(of: filterLabel) { _, _ in
                     stopScrolling(); offset = 0; startScrolling()
                 }
+                .onPreferenceChange(NewsStripWidthKey.self) { w in
+                    if w > 0 { stripWidth = w }
+                }
             }
             .clipped()
         }
@@ -160,7 +168,7 @@ struct NewsTickerRow: View {
             GeometryReader { g in
                 Color.clear
                     .onAppear { stripWidth = g.size.width }
-                    .onChange(of: g.size.width) { _, w in stripWidth = w }
+                    .preference(key: NewsStripWidthKey.self, value: g.size.width)
             }
         )
     }
