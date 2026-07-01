@@ -4,6 +4,7 @@ import SwiftUI
 
 struct QuoteChip: View {
     let quote: StockQuote
+    var onSymbolHover: ((String?) -> Void)? = nil
 
     private var changeColor: Color {
         quote.isPositive
@@ -41,6 +42,9 @@ struct QuoteChip: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
+        .onHover { hovering in
+            onSymbolHover?(hovering ? quote.symbol : nil)
+        }
     }
 }
 
@@ -62,6 +66,7 @@ struct PriceTickerRow: View {
     let isMarketOpen: Bool
     let sessionLabel: String
     let statusMessage: String
+    var onSymbolHover: ((String?) -> Void)? = nil
 
     @State private var isAnimating = false
 
@@ -71,7 +76,7 @@ struct PriceTickerRow: View {
     var body: some View {
         ZStack(alignment: .leading) {
             // Scrolling strip — inset by badge width + a small gap
-            ScrollingContent(quotes: quotes)
+            ScrollingContent(quotes: quotes, onSymbolHover: onSymbolHover)
                 .padding(.leading, badgeWidth + 4)
                 .clipped()
 
@@ -123,6 +128,7 @@ struct PriceTickerRow: View {
 
 struct ScrollingContent: View {
     let quotes: [StockQuote]
+    var onSymbolHover: ((String?) -> Void)? = nil
 
     @State private var offset: CGFloat = 0
     @State private var stripWidth: CGFloat = 0
@@ -152,7 +158,7 @@ struct ScrollingContent: View {
     private var stripContent: some View {
         HStack(spacing: 0) {
             ForEach(quotes) { quote in
-                QuoteChip(quote: quote)
+                QuoteChip(quote: quote, onSymbolHover: onSymbolHover)
                 SeparatorDot()
             }
         }

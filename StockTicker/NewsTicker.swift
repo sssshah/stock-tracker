@@ -101,6 +101,7 @@ extension View {
 
 struct NewsTickerRow: View {
     let items: [NewsItem]
+    var filterLabel: String? = nil
 
     @State private var offset: CGFloat = 0
     @State private var stripWidth: CGFloat = 0
@@ -111,15 +112,20 @@ struct NewsTickerRow: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            // Pinned "NEWS" badge
-            Text("NEWS")
+            // Pinned badge — "NEWS" normally, symbol name when filtered
+            let badgeLabel = filterLabel ?? "NEWS"
+            let badgeColor = filterLabel != nil
+                ? Color(red: 1.0, green: 0.75, blue: 0.3)
+                : Color(red: 0.4, green: 0.75, blue: 1.0)
+            Text(badgeLabel)
                 .font(.system(size: 9, weight: .bold, design: .monospaced))
-                .foregroundColor(Color(red: 0.4, green: 0.75, blue: 1.0))
+                .foregroundColor(badgeColor)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
-                .background(Color(red: 0.4, green: 0.75, blue: 1.0).opacity(0.15))
+                .background(badgeColor.opacity(0.15))
                 .cornerRadius(3)
                 .padding(.leading, 12)
+                .animation(.easeInOut(duration: 0.15), value: filterLabel)
 
             GeometryReader { _ in
                 HStack(spacing: 0) {
@@ -129,6 +135,9 @@ struct NewsTickerRow: View {
                 .offset(x: offset)
                 .onAppear { startScrolling() }
                 .onChange(of: items.count) { _, _ in
+                    stopScrolling(); offset = 0; startScrolling()
+                }
+                .onChange(of: filterLabel) { _, _ in
                     stopScrolling(); offset = 0; startScrolling()
                 }
             }
