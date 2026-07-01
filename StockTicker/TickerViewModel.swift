@@ -50,9 +50,10 @@ class TickerViewModel: ObservableObject {
     }
 
     func reloadAfterEdit() {
+        isLoading = true  // prevent brief closedView flash that resets @State stripWidth
         quotes = [:]
         newsItems = []
-        lastNewsFetch = nil  // force news re-fetch
+        lastNewsFetch = nil
         Task { await refresh() }
     }
 
@@ -77,7 +78,7 @@ class TickerViewModel: ObservableObject {
     // MARK: - Refresh
 
     func refresh() async {
-        isLoading = true
+        if quotes.isEmpty { isLoading = true }  // only show loading spinner on first fetch
 
         let shouldFetch = await checkMarketAvailability()
         guard shouldFetch else {
