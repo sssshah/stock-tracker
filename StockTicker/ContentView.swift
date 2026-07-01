@@ -3,7 +3,6 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var viewModel: TickerViewModel
     @State private var isHovered = false
-    @State private var showPortfolioEditor = false
     @State private var isMaximized = false
 
     var body: some View {
@@ -107,12 +106,6 @@ struct ContentView: View {
         .frame(minWidth: 1200, maxWidth: .infinity, minHeight: 80, maxHeight: 80)
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.18)) { isHovered = hovering }
-        }
-        .popover(isPresented: $showPortfolioEditor, arrowEdge: .top) {
-            PortfolioEditorView(vm: viewModel, isPresented: $showPortfolioEditor)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .openPortfolioEditor)) { _ in
-            showPortfolioEditor = true
         }
         .onReceive(NotificationCenter.default.publisher(for: .refreshTicker)) { _ in
             Task { await viewModel.refresh() }

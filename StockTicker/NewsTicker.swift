@@ -69,9 +69,11 @@ struct NewsChip: View {
     }
 
     private func openURL(_ urlString: String) {
-        guard !urlString.isEmpty,
-              let url = URL(string: urlString) else { return }
-        NSWorkspace.shared.open(url)
+        guard !urlString.isEmpty else { return }
+        NotificationCenter.default.post(
+            name: .newsArticleTapped,
+            object: ["url": urlString, "headline": item.headline]
+        )
     }
 }
 

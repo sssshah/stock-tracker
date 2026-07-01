@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PortfolioEditorView: View {
     @ObservedObject var vm: TickerViewModel
-    @Binding var isPresented: Bool
+    var onDismiss: () -> Void
 
     @State private var newSymbol: String = ""
     @State private var inputError: String? = nil
@@ -76,7 +76,7 @@ struct PortfolioEditorView: View {
                     .foregroundColor(Color.white.opacity(0.4))
             }
             Spacer()
-            Button(action: { isPresented = false }) {
+            Button(action: { onDismiss() }) {
                 Image(systemName: "xmark")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(Color.white.opacity(0.5))
@@ -235,7 +235,7 @@ struct PortfolioEditorView: View {
     private var applyButton: some View {
         Button(action: {
             vm.reloadAfterEdit()
-            isPresented = false
+            onDismiss()
         }) {
             ZStack {
                 RoundedRectangle(cornerRadius: 10)
@@ -281,6 +281,10 @@ struct PortfolioEditorView: View {
         }
         if sym.count > 6 {
             inputError = "Ticker symbols are 1–5 characters"
+            return
+        }
+        if sym.unicodeScalars.contains(where: { !CharacterSet.alphanumerics.contains($0) }) {
+            inputError = "Only letters and numbers allowed"
             return
         }
 

@@ -1,13 +1,18 @@
 import SwiftUI
 import AppKit
+import WebKit
 
 @main
 struct StockTickerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        // Empty scene — window is created entirely by AppDelegate using NSPanel
+        // Empty scene — window is created entirely by AppDelegate using NSPanel.
+        // CommandGroup replacement suppresses the system ⌘, Settings window.
         Settings { EmptyView() }
+            .commands {
+                CommandGroup(replacing: .appSettings) { }
+            }
     }
 }
 
@@ -15,12 +20,22 @@ struct StockTickerApp: App {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
-    var panel: NSPanel?
+    var panel: FloatingPanel?
+    var editorPanel: FloatingPanel?
+    var aboutPanel: NSPanel?
+    var newsPanel: NSPanel?
     var coordinator: WindowCoordinator?
+    var viewModel: TickerViewModel?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMenuBarExtra()
         setupPanel()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(openNewsArticle(_:)),
+            name: .newsArticleTapped,
+            object: nil
+        )
     }
 
     // MARK: - NSPanel Setup
@@ -30,12 +45,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let height: CGFloat = 80
 
         // Position at top-center of main screen by default
-        let screen = NSScreen.main ?? NSScreen.screens[0]
+        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         let screenFrame = screen.visibleFrame
         let x = screenFrame.midX - width / 2
         let y = screenFrame.maxY - height
 
-        let panel = NSPanel(
+        let panel = FloatingPanel(
             contentRect: NSRect(x: x, y: y, width: width, height: height),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
@@ -54,8 +69,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // TickerViewModel is @MainActor — create it on the main actor
         Task { @MainActor in
             let viewModel = TickerViewModel()
+            self.viewModel = viewModel
             let contentView = ContentView(viewModel: viewModel)
-            let hostingView = NSHostingView(rootView: contentView)
+            let hostingView = FirstMouseHostingView(rootView: contentView)
             hostingView.frame = NSRect(x: 0, y: 0, width: width, height: height)
 
             panel.contentView = hostingView
@@ -64,10 +80,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             panel.contentView?.layer?.masksToBounds = true
 
             // Restore saved position
-            if let saved = UserDefaults.standard.string(forKey: "ticker_window_frame") {
+            if let saved = UserDefaults.standard.string(forKey: "ticker_window_frame"),
+               let restoreScreen = NSScreen.main ?? NSScreen.screens.first {
                 let frame = NSRectFromString(saved)
-                let screen = NSScreen.main ?? NSScreen.screens[0]
-                if frame != .zero, screen.frame.intersects(frame) {
+                if frame != .zero, restoreScreen.frame.intersects(frame) {
                     panel.setFrameOrigin(frame.origin)
                 }
             }
@@ -101,7 +117,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let editItem = NSMenuItem(title: "Edit Portfolio…",
                                   action: #selector(openPortfolioEditor),
-                                  keyEquivalent: ",")
+                                  keyEquivalent: "")
         editItem.target = self
         menu.addItem(editItem)
         menu.addItem(.separator())
@@ -146,16 +162,94 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return image
     }
 
+    @objc private func openNewsArticle(_ notification: Notification) {
+        guard let info = notification.object as? [String: String],
+              let urlString = info["url"],
+              let url = URL(string: urlString) else { return }
+        let headline = info["headline"] ?? "Article"
+
+        newsPanel?.close()
+
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 960, height: 700),
+            styleMask: [.titled, .closable, .resizable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        panel.title = headline
+        panel.hidesOnDeactivate = false
+
+        let webView = WKWebView()
+        webView.load(URLRequest(url: url))
+        panel.contentView = webView
+
+        panel.center()
+        panel.orderFrontRegardless()
+        newsPanel = panel
+    }
+
     @objc private func openAbout() {
-        let html = AssumptionsPage.html
-        let tmpURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("StockTicker-Assumptions.html")
-        try? html.write(to: tmpURL, atomically: true, encoding: .utf8)
-        NSWorkspace.shared.open(tmpURL)
+        if let existing = aboutPanel, existing.isVisible {
+            existing.orderFrontRegardless()
+            return
+        }
+
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 760, height: 620),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        panel.title = "Data & Assumptions"
+        panel.hidesOnDeactivate = false
+        panel.contentView = NSHostingView(rootView: AboutView())
+        panel.center()
+        panel.orderFrontRegardless()
+        aboutPanel = panel
     }
 
     @objc private func openPortfolioEditor() {
-        NotificationCenter.default.post(name: .openPortfolioEditor, object: nil)
+        // If already open, just bring it forward
+        if let existing = editorPanel, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        guard let vm = viewModel else { return }
+
+        let editorView = PortfolioEditorView(vm: vm, onDismiss: { [weak self] in
+            self?.editorPanel?.close()
+            self?.editorPanel = nil
+        })
+
+        let ep = FloatingPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 340, height: 500),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        ep.level = .floating
+        ep.hidesOnDeactivate = false
+        ep.backgroundColor = .clear
+        ep.isOpaque = false
+        ep.hasShadow = true
+        ep.contentView = NSHostingView(rootView: editorView)
+
+        // Position below the ticker bar, horizontally centered on it
+        if let tf = panel?.frame,
+           let screen = NSScreen.main ?? NSScreen.screens.first {
+            let x = tf.midX - 170
+            let y = tf.minY - 510
+            ep.setFrameOrigin(NSPoint(
+                x: max(screen.visibleFrame.minX, min(x, screen.visibleFrame.maxX - 340)),
+                y: max(screen.visibleFrame.minY, y)
+            ))
+        } else {
+            ep.center()
+        }
+
+        ep.makeKeyAndOrderFront(nil)
+        editorPanel = ep
     }
 
     @objc private func refreshNow() {
@@ -166,7 +260,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - Notification Names
 
 extension Notification.Name {
-    static let openPortfolioEditor = Notification.Name("openPortfolioEditor")
+    static let newsArticleTapped   = Notification.Name("newsArticleTapped")
     static let refreshTicker       = Notification.Name("refreshTicker")
     static let windowDidMaximize   = Notification.Name("windowDidMaximize")
     static let windowDidRestore    = Notification.Name("windowDidRestore")
@@ -177,13 +271,13 @@ extension Notification.Name {
 // Handles maximize/restore, position persistence, and ESC key for the NSPanel.
 
 class WindowCoordinator: NSObject {
-    weak var panel: NSPanel?
+    weak var panel: FloatingPanel?
     var isMaximized = false
     var normalFrame: NSRect = .zero
     private let positionKey = "ticker_window_frame"
     private var monitor: Any?
 
-    init(panel: NSPanel) {
+    init(panel: FloatingPanel) {
         self.panel = panel
         super.init()
 
@@ -255,16 +349,19 @@ class WindowCoordinator: NSObject {
     }
 }
 
-// MARK: - Window Move Observer (kept for compatibility)
+// MARK: - FloatingPanel
+// canBecomeKey = true is required for both the ticker bar (so tap gestures and
+// hover controls receive events) and the editor (so TextFields can become first
+// responder). nonactivatingPanel prevents the app from stealing focus from other
+// apps — that is what keeps the panel unobtrusive, not canBecomeKey.
 
-class WindowMoveObserver: NSObject {
-    private weak var window: NSWindow?
-    private let positionKey = "ticker_window_frame"
-
-    init(window: NSWindow, coordinator: AnyObject) {
-        self.window = window
-        super.init()
-    }
+class FloatingPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
 }
 
-private var moveObserverKey: UInt8 = 0
+// Forwards the first mouse-down to SwiftUI even when the panel is becoming key,
+// so tap gestures fire on the first click instead of the second.
+class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+

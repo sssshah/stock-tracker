@@ -82,3 +82,10 @@ struct FinnhubMarketStatusResponse: Decodable {
     let holiday: String?
     let session: String?
 }
+
+extension FinnhubNewsItem {
+    func withHeadline(_ h: String) -> FinnhubNewsItem {
+        FinnhubNewsItem(id: id, headline: h, source: source, url: url,
+                        datetime: datetime, summary: summary, related: related, category: category)
+    }
+}
