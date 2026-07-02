@@ -67,6 +67,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.hasShadow = true
         panel.hidesOnDeactivate = false
         panel.isFloatingPanel = true
+        panel.appearance = NSAppearance(named: .darkAqua)
 
         // TickerViewModel is @MainActor — create it on the main actor
         Task { @MainActor in
@@ -238,6 +239,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ep.backgroundColor = .clear
         ep.isOpaque = false
         ep.hasShadow = true
+        ep.appearance = NSAppearance(named: .darkAqua)
         ep.contentView = NSHostingView(rootView: editorView)
 
         // Position below the ticker bar, horizontally centered on it
