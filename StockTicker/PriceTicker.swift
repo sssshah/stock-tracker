@@ -86,7 +86,9 @@ struct PriceTickerRow: View {
                 .padding(.leading, 12)
                 .background(
                     GeometryReader { g in
-                        Color.clear.onAppear { badgeWidth = g.size.width + 12 }
+                        Color.clear
+                            .onAppear { badgeWidth = g.size.width + 12 }
+                            .onChange(of: g.size.width) { _, w in badgeWidth = w + 12 }
                     }
                 )
                 // Blur-matched background so scrolling text never bleeds under the badge

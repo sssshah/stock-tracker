@@ -6,7 +6,6 @@ struct PortfolioEditorView: View {
 
     @State private var newSymbol: String = ""
     @State private var inputError: String? = nil
-    @State private var isValidating: Bool = false
     @FocusState private var inputFocused: Bool
 
     // Ticker gradient colors — match the dark bar aesthetic
@@ -29,16 +28,18 @@ struct PortfolioEditorView: View {
                     .padding(.top, 20)
                     .padding(.bottom, 16)
 
-                Divider()
-                    .background(Color.white.opacity(0.08))
+                Rectangle()
+                    .fill(Color.white.opacity(0.08))
+                    .frame(height: 1)
 
                 // ── Symbol List ───────────────────────────────────────────
                 symbolList
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
 
-                Divider()
-                    .background(Color.white.opacity(0.08))
+                Rectangle()
+                    .fill(Color.white.opacity(0.08))
+                    .frame(height: 1)
                     .padding(.top, 8)
 
                 // ── Add Symbol Input ──────────────────────────────────────
@@ -200,20 +201,14 @@ struct PortfolioEditorView: View {
                                     endPoint: .bottomTrailing
                                 )
                             )
-                        if isValidating {
-                            ProgressView()
-                                .scaleEffect(0.6)
-                                .tint(.white)
-                        } else {
-                            Image(systemName: "plus")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundColor(.white)
-                        }
+                        Image(systemName: "plus")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
                     }
                     .frame(width: 38, height: 38)
                 }
                 .buttonStyle(.plain)
-                .disabled(newSymbol.trimmingCharacters(in: .whitespaces).isEmpty || isValidating)
+                .disabled(newSymbol.trimmingCharacters(in: .whitespaces).isEmpty)
             }
 
             if let error = inputError {
@@ -280,7 +275,7 @@ struct PortfolioEditorView: View {
             return
         }
         if sym.count > 6 {
-            inputError = "Ticker symbols are 1–5 characters"
+            inputError = "Ticker symbols are 1–6 characters"
             return
         }
         if sym.unicodeScalars.contains(where: { !CharacterSet.alphanumerics.contains($0) }) {

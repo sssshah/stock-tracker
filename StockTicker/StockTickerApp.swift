@@ -181,6 +181,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         panel.title = headline
         panel.hidesOnDeactivate = false
+        panel.appearance = NSAppearance(named: .darkAqua)
 
         let webView = WKWebView()
         webView.navigationDelegate = self
@@ -208,6 +209,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         panel.title = "Data & Assumptions"
         panel.hidesOnDeactivate = false
+        panel.appearance = NSAppearance(named: .darkAqua)
         panel.contentView = NSHostingView(rootView: AboutView())
         panel.center()
         panel.orderFrontRegardless()
@@ -240,7 +242,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ep.isOpaque = false
         ep.hasShadow = true
         ep.appearance = NSAppearance(named: .darkAqua)
-        ep.contentView = NSHostingView(rootView: editorView)
+        ep.contentView = FirstMouseHostingView(rootView: editorView)
 
         // Position below the ticker bar, horizontally centered on it
         if let tf = panel?.frame,

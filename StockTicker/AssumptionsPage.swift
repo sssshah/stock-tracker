@@ -25,7 +25,7 @@ struct AboutView: View {
                 ])
                 scoringSection
                 infoSection("Limitations & Disclaimers", rows: [
-                    InfoRow("Requirements",           "macOS 26 (Tahoe) or later."),
+                    InfoRow("Requirements",           "macOS 14 (Sonoma) or later."),
                     InfoRow("Not Financial Advice",   "This app is for informational purposes only. Nothing displayed constitutes investment advice."),
                     InfoRow("Delayed Prices",         "All prices are delayed ~15–20 minutes. Do not use for time-sensitive trading decisions."),
                     InfoRow("News Accuracy",          "News is sourced from Finnhub's aggregation. Story relevance is determined by Finnhub's tagging — occasional misattribution may occur."),
@@ -231,7 +231,7 @@ struct AboutView: View {
                 Text("Stock Ticker for macOS  ·  Built with SwiftUI  ·  Data by ")
                     .foregroundColor(Color(red: 0.294, green: 0.318, blue: 0.369))
                 Button("finnhub.io") {
-                    NSWorkspace.shared.open(URL(string: "https://finnhub.io")!)
+                    if let url = URL(string: "https://finnhub.io") { NSWorkspace.shared.open(url) }
                 }
                 .buttonStyle(.plain)
                 .foregroundColor(Color(red: 0.294, green: 0.620, blue: 0.973))

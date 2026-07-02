@@ -52,8 +52,7 @@ class TickerViewModel: ObservableObject {
     func reloadAfterEdit() {
         isLoading = true  // prevent brief closedView flash that resets @State stripWidth
         quotes = [:]
-        newsItems = []
-        lastNewsFetch = nil
+        lastNewsFetch = nil  // force news re-fetch on next open market refresh
         Task { await refresh() }
     }
 
@@ -158,7 +157,7 @@ class TickerViewModel: ObservableObject {
     var sessionLabel: String {
         guard isMarketOpen else { return "CLOSED" }
         var cal = Calendar.current
-        cal.timeZone = TimeZone(identifier: "America/New_York")!
+        cal.timeZone = TimeZone(identifier: "America/New_York") ?? .current
         let c = cal.dateComponents([.hour, .minute], from: Date())
         let m = (c.hour ?? 0) * 60 + (c.minute ?? 0)
         if m >= 240 && m < 570  { return "PRE" }

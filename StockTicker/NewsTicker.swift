@@ -83,9 +83,9 @@ struct PointingHandCursor: ViewModifier {
     func body(content: Content) -> some View {
         content.onHover { inside in
             if inside {
-                NSCursor.pointingHand.push()
+                NSCursor.pointingHand.set()
             } else {
-                NSCursor.pop()
+                NSCursor.arrow.set()
             }
         }
     }

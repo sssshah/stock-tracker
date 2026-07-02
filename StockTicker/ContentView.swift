@@ -67,7 +67,9 @@ struct ContentView: View {
 
                 // Row 1: Prices
                 Group {
-                    if viewModel.isHolidayOrWeekend || (viewModel.formattedQuotes().isEmpty && !viewModel.isLoading) {
+                    if viewModel.symbols.isEmpty {
+                        emptyPortfolioView
+                    } else if viewModel.isHolidayOrWeekend || (viewModel.formattedQuotes().isEmpty && !viewModel.isLoading) {
                         closedView
                     } else {
                         PriceTickerRow(
@@ -205,6 +207,18 @@ struct ContentView: View {
     }
 
     // MARK: - Sub-views
+
+    private var emptyPortfolioView: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "plus.circle")
+                .font(.system(size: 12))
+                .foregroundColor(Color.white.opacity(0.35))
+            Text("No symbols — use Edit Portfolio to add tickers")
+                .font(.system(size: 11))
+                .foregroundColor(Color.white.opacity(0.35))
+        }
+        .frame(height: 36).frame(maxWidth: .infinity)
+    }
 
     private var closedView: some View {
         HStack(spacing: 10) {
